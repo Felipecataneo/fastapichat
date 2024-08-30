@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+langchain
+langchain_openai
+chromadb
+unstructured
+python-multipart
+tiktoken
+langchain_community
