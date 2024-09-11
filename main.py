@@ -1,9 +1,8 @@
 from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
-from langchain_community.llms import OpenAI
+from langchain_openai import OpenAI, OpenAIEmbeddings
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from typing import Dict
@@ -47,14 +46,14 @@ async def load_url(url_request: URLRequest, api_key: str = Depends(get_api_key))
         # Armazenar o vectorstore para este usuário
         user_vectorstores[api_key] = vectorstore
         
-        return {"message": "URL loaded and processed successfully"}
+        return {"message": "URL carregada e processada"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro processando URL: {str(e)}")
 
 @app.post("/ask")
 async def ask_question(question_request: QuestionRequest, api_key: str = Depends(get_api_key)):
     if api_key not in user_vectorstores:
-        raise HTTPException(status_code=400, detail="No URL has been loaded yet for this user")
+        raise HTTPException(status_code=400, detail="Nenhuma url processada")
     
     try:
         vectorstore = user_vectorstores[api_key]
@@ -63,7 +62,7 @@ async def ask_question(question_request: QuestionRequest, api_key: str = Depends
         qa_chain = RetrievalQA.from_chain_type(
             llm=OpenAI(openai_api_key=api_key),
             chain_type="stuff",
-            retriever=vectorstore.as_retriever()
+            retriever=vectorstore.as_retriever(search_kwargs={"k": 1})  # Limit to 1 result
         )
         
         # Obter a resposta
@@ -71,7 +70,7 @@ async def ask_question(question_request: QuestionRequest, api_key: str = Depends
         
         return {"answer": response}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro processando a pergunta: {str(e)}")
 
 @app.post("/clear_data")
 async def clear_data(api_key: str = Depends(get_api_key)):
